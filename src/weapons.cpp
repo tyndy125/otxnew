@@ -1,4 +1,6 @@
 /**
+ * @file weapons.cpp
+ * 
  * The Forgotten Server - a free and open-source MMORPG server emulator
  * Copyright (C) 2019 Mark Samman <mark.samman@gmail.com>
  *
@@ -229,41 +231,41 @@ bool Weapon::configureEvent(const pugi::xml_node& node)
 		}
 	}
 
-	std::string vocationString;
+	std::string vocationName;
 	for (const std::string& str : vocStringList) {
-		if (!vocationString.empty()) {
+		if (!vocationName.empty()) {
 			if (str != vocStringList.back()) {
-				vocationString.push_back(',');
-				vocationString.push_back(' ');
+				vocationName.push_back(',');
+				vocationName.push_back(' ');
 			} else {
-				vocationString += " and ";
+				vocationName += " and ";
 			}
 		}
 
-		vocationString += str;
-		vocationString.push_back('s');
+		vocationName += str;
+		vocationName.push_back('s');
 	}
 
-	uint32_t wieldInfo = 0;
+	uint32_t wieldInformation = 0;
 	if (getReqLevel() > 0) {
-		wieldInfo |= WIELDINFO_LEVEL;
+		wieldInformation |= WIELDINFO_LEVEL;
 	}
 
 	if (getReqMagLv() > 0) {
-		wieldInfo |= WIELDINFO_MAGLV;
+		wieldInformation |= WIELDINFO_MAGLV;
 	}
 
 	if (!vocationString.empty()) {
-		wieldInfo |= WIELDINFO_VOCREQ;
+		wieldInformation |= WIELDINFO_VOCREQ;
 	}
 
 	if (isPremium()) {
-		wieldInfo |= WIELDINFO_PREMIUM;
+		wieldInformation |= WIELDINFO_PREMIUM;
 	}
 
-	if (wieldInfo != 0) {
+	if (wieldInformation != 0) {
 		ItemType& it = Item::items.getItemType(id);
-		it.wieldInfo = wieldInfo;
+		it.wieldInfo = wieldInformation;
 		it.vocationString = vocationString;
 		it.minReqLevel = getReqLevel();
 		it.minReqMagicLevel = getReqMagLv();
@@ -386,8 +388,8 @@ void Weapon::internalUseWeapon(Player* player, Item* item, Creature* target, int
 		executeUseWeapon(player, var);
 	} else {
 		CombatDamage damage;
-		WeaponType_t weaponType = item->getWeaponType();
-		if (weaponType == WEAPON_AMMO || weaponType == WEAPON_DISTANCE) {
+		WeaponType_t localWeaponType = item->getWeaponType();
+		if (localWeaponType == WEAPON_AMMO || localWeaponType == WEAPON_DISTANCE) {
 			damage.origin = ORIGIN_RANGED;
 		} else {
 			damage.origin = ORIGIN_MELEE;
@@ -444,6 +446,7 @@ void Weapon::onUsedWeapon(Player* player, Item* item, Tile* destTile) const
 
 	if (breakChance != 0 && uniform_random(1, 100) <= breakChance) {
 		Weapon::decrementItemCount(item);
+		player->updateSupplyTracker(item);
 		return;
 	}
 
@@ -451,6 +454,7 @@ void Weapon::onUsedWeapon(Player* player, Item* item, Tile* destTile) const
 		case WEAPONACTION_REMOVECOUNT:
 			if(g_config.getBoolean(ConfigManager::REMOVE_WEAPON_AMMO)) {
 				Weapon::decrementItemCount(item);
+				player->updateSupplyTracker(item);
 			}
 			break;
 
@@ -570,8 +574,8 @@ bool WeaponMelee::getSkillType(const Player* player, const Item* item,
 		skillpoint = 0;
 	}
 
-	WeaponType_t weaponType = item->getWeaponType();
-	switch (weaponType) {
+	WeaponType_t localWeaponType = item->getWeaponType();
+	switch (localWeaponType) {
 		case WEAPON_SWORD: {
 			skill = SKILL_SWORD;
 			return true;

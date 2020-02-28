@@ -121,22 +121,11 @@ function onUse(player, item, fromPosition, target, toPosition, isHotkey)
 		return true
 	end
 
+	local client = player:getClient()
+	if client.version > 1140 then
+		player:updateSupplyTracker(item)
+	end
+
 	item:remove(1)
 	return true
-end
-
-function Player:canUsePotion(potionId, ignoreLevel --[[=false]])
-    if not ignoreLevel then
-        ignoreLevel = false
-    end
-
-    if self:getGroup():getAccess() then
-        return true
-    end
-    local potion = potions[item:getId()]
-    if potion then
-        return (potion.level and self:getLevel() >= potion.level or ignoreLevel)
-                and (potion.vocations and table.contains(potion.vocations, self:getVocation():getBase():getId()) or not potion.vocations)
-    end
-    return false
 end

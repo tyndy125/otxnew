@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<monster name="Soul-Broken Harbinger" nameDescription="a Soul-Broken Harbinger" race="blood" experience="7000" speed="250" manacost="0">
-	<health now="9000" max="9000" />
-	<look type="1137" head="0" body="10" legs="18" feet="64" addons="3" corpse="34776" />
+<monster name="Soul-Broken Harbinger" nameDescription="a Soul-Broken Harbinger" race="blood" experience="5800" speed="210">
+	<health now="6300" max="6300" />
+	<look type="1137" head="124" body="31" legs="17" feet="81" addons="3" corpse="34775" />
 	<targetchange interval="4000" chance="10" />
 	<flags>
 		<flag summonable="0" />
@@ -18,21 +18,9 @@
 		<flag canwalkonfire="0" />
 	</flags>
 	<attacks>
-		<attack name="melee" interval="2000" min="0" max="150" />
-		<attack name="ice" interval="2000" chance="30" length="5" spread="0"  min="-100" max="-300">
-			<attribute key="shootEffect" value="ice" />
-			<attribute key="areaEffect" value="iceattack" />
-		</attack>
-		<attack name="ice" interval="5000" chance="30" radius="4" min="-200" max="-300">
-			<attribute key="shootEffect" value="ice" />
-			<attribute key="areaEffect" value="icearea" />
-		</attack>
-		<attack name="ice" interval="5000" chance="30" length="3" spread="0" min="-200" max="-300">
-			<attribute key="areaEffect" value="giantice" />
-		</attack>
-		<attack name="ice" interval="3000" chance="30" target="1" min="-100" max="-200">
-			<attribute key="shootEffect" value="snowball" />
-			<attribute key="areaEffect" value="icearea" />
+		<attack name="melee" interval="2000" min="0" max="-240" />
+		<attack name="physical" interval="2000" chance="20" range="7" min="0" max="-120">
+			<attribute key="shootEffect" value="arrow" />
 		</attack>
 	</attacks>
 	<defenses armor="40" defense="40">
@@ -41,24 +29,15 @@
 		</defense>
 	</defenses>
 	<elements>
-		<element energyPercent="-15" />
-		<element icePercent="45" />
+		<element energyPercent="-5" />
 		<element firePercent="-30" />
-		<element holyPercent="0" />
-		<element earthPercent="0" />
-		<element physicalPercent="0" />
-		<element deathPercent="0" />
+		<element deathPercent="20" />
+		<element icePercent="55" />
 	</elements>
 	<immunities>
 		<immunity paralyze="1" />
 		<immunity invisible="1" />
 	</immunities>
-	<voices interval="5000" chance="10">
-		<voice sentence="Let's have a fight!" />
-		<voice sentence="Welcome to my battleground." />
-		<voice sentence="Have you seen princess Lumelia?" />
-		<voice sentence="I will sing a tune at your grave." />
-	</voices>
 	<loot>
 	    <item name="Platinum Coin" countmax="12" chance="100000" />
 		<item id="34696" countmax="3" chance="15750" /> <!-- Ice Flower -->

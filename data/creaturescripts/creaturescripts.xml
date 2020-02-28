@@ -8,9 +8,6 @@
 	<event type="death" name="Servant_Death" script="mastervoice/servantDeath.lua"/>
 	<event type="death" name="Mage_Death" script="mastervoice/mageDeath.lua"/>
 
-	<!-- AUTO LOOT -->
-	<event type="modalwindow" name="autoloot" script="autoloot.lua"/>
-
 	<!-- New Summons (Pets) -->
 	<event type="login" name="petlogin" script="pet.lua" />
 	<event type="think" name="petthink" script="pet.lua" />
@@ -223,12 +220,10 @@
 	<!-- Gray Island -->
 	<event type="kill" name="deeplingBosses" script="gray_island/deeplingKill.lua"/>
 
-	<!-- The Curse Spread -->
-	<event type="kill" name="BossesTheCurseSpread" script="quests/the curse spreads/bosses.lua" />
-
 	<!-- Others -->
 	<event type="login" name="AdventurerBlessings" script="adventureblessings.lua"/>
 	<event type="login" name="PlayerLogin" script="others/login.lua" />
+	<event type="login" name="loginEvents" script="others/loginEvents.lua" />
 	<event type="login" name="FirstItems" script="others/firstitems.lua" />
 	<event type="login" name="RegenerateStamina" script="others/regeneratestamina.lua" />
 	<event type="login" name="OfflineTraining" script="others/offlinetraining.lua" />

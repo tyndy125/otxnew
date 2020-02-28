@@ -1,4 +1,6 @@
 /**
+ * @file game.cpp
+ * 
  * The Forgotten Server - a free and open-source MMORPG server emulator
  * Copyright (C) 2019 Mark Samman <mark.samman@gmail.com>
  *
@@ -121,8 +123,6 @@ void Game::setGameState(GameState_t newState)
 	switch (newState) {
 		case GAME_STATE_INIT: {
 			loadExperienceStages();
-      loadSkillStages();
-      loadMagicLevelStages();
 
 			groups.load();
 			g_chat->load();
@@ -131,9 +131,6 @@ void Game::setGameState(GameState_t newState)
 
 			raids.loadFromXml();
 			raids.startup();
-
-			if(!g_config.getBoolean(ConfigManager::QUEST_LUA))
-				quests.loadFromXml();
 
 			mounts.loadFromXml();
 
@@ -1236,6 +1233,29 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 		return retMaxCount;
 	}
 
+	// looting analyser from this point forward
+	if (fromCylinder && actor && toCylinder) {
+		if (!fromCylinder->getContainer() || !actor->getPlayer() || !toCylinder->getContainer()) {
+			return ret;
+		}
+
+	 	if (Player* player = actor->getPlayer()) {
+	 		if (player->getProtocolVersion() < 1140 || player->operatingSystem != CLIENTOS_NEW_WINDOWS) {
+				player->updateLootTracker(item);
+	 			return ret;
+			}
+
+			const ItemType& it = Item::items[fromCylinder->getItem()->getID()];
+			if (it.id <= 0) {
+				return ret;
+			}
+
+			if (it.corpseType != RACE_NONE && toCylinder->getContainer()->getTopParent() == player && item->getIsLootTrackeable()) {
+				player->updateLootTracker(item);
+			}
+		}
+	}
+
 	if (moveItem && moveItem->getDuration() > 0) {
 		if (moveItem->getDecaying() != DECAYING_TRUE) {
 			moveItem->incrementReferenceCounter();
@@ -1395,6 +1415,7 @@ ReturnValue Game::internalPlayerAddItem(Player* player, Item* item, bool dropOnM
 		ReturnValue remaindRet = internalAddItem(player->getTile(), remainderItem, INDEX_WHEREEVER, FLAG_NOLIMIT);
 		if (remaindRet != RETURNVALUE_NOERROR) {
 			ReleaseItem(remainderItem);
+			player->updateLootTracker(item);
 		}
 	}
 
@@ -1509,8 +1530,8 @@ bool Game::removeMoney(Cylinder* cylinder, uint64_t money, uint32_t flags /*= 0*
 	}
 
 	if (moneyCount < money) {
-		return false;
-	}
+        return false;
+    }
 
 	for (const auto& moneyEntry : moneyMap) {
 		Item* item = moneyEntry.second;
@@ -1529,6 +1550,8 @@ bool Game::removeMoney(Cylinder* cylinder, uint64_t money, uint32_t flags /*= 0*
 			break;
 		}
 	}
+	moneyMap.clear();
+
 	return true;
 }
 
@@ -3538,10 +3561,7 @@ void Game::playerShowQuestLog(uint32_t playerId)
 		return;
 	}
 
-	if(!g_config.getBoolean(ConfigManager::QUEST_LUA))
-		player->sendQuestLog();
-	else
-		g_events->eventPlayerOnRequestQuestLog(player);
+	g_events->eventPlayerOnRequestQuestLog(player);
 }
 
 void Game::playerShowQuestLine(uint32_t playerId, uint16_t questId)
@@ -3551,17 +3571,7 @@ void Game::playerShowQuestLine(uint32_t playerId, uint16_t questId)
 		return;
 	}
 
-	if(!g_config.getBoolean(ConfigManager::QUEST_LUA))
-	{
-		Quest* quest = quests.getQuestByID(questId);
-		if (!quest) {
-			return;
-		}
-
-		player->sendQuestLine(quest);
-	} else {
-		g_events->eventPlayerOnRequestQuestLine(player, questId);
-	}
+	g_events->eventPlayerOnRequestQuestLine(player, questId);
 }
 
 void Game::playerSay(uint32_t playerId, uint16_t channelId, SpeakClasses type,
@@ -3827,7 +3837,7 @@ void Game::checkCreatureWalk(uint32_t creatureId)
 {
 	Creature* creature = getCreatureByID(creatureId);
 	if (creature && creature->getHealth() > 0) {
-		creature->onWalk();
+		creature->onCreatureWalk();
 		cleanup();
 	}
 }
@@ -4156,6 +4166,9 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		realHealthChange = target->getHealth() - realHealthChange;
 
 		if (realHealthChange > 0 && !target->isInGhostMode()) {
+			if (targetPlayer) {
+				targetPlayer->updateImpactTracker(realHealthChange, true);
+			}
 			std::stringstream ss;
 
 			ss << realHealthChange << (realHealthChange != 1 ? " hitpoints." : " hitpoint.");
@@ -4374,6 +4387,10 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		target->drainHealth(attacker, realDamage);
 		if (realDamage > 0) {
 			if (Monster* targetMonster = target->getMonster()) {
+				if (attackerPlayer && attackerPlayer->getPlayer()) {
+					attackerPlayer->updateImpactTracker(realDamage, false);
+				}
+
 				if (targetMonster->israndomStepping()) {
 					targetMonster->setIgnoreFieldDamage(true);
 					targetMonster->updateMapCache();
@@ -4846,7 +4863,13 @@ void Game::checkImbuements()
 
 		if (item->isRemoved() || !item->getParent()->getCreature()) {
 			ReleaseItem(item);
-			it = imbuedItems[bucket].erase(it);			
+			it = imbuedItems[bucket].erase(it);
+			continue;
+		}
+
+		Player* player = item->getParent()->getCreature()->getPlayer();
+		if (!player->hasCondition(CONDITION_INFIGHT)) {
+			it++;
 			continue;
 		}
 
@@ -4861,7 +4884,6 @@ void Game::checkImbuements()
 			}
 		}
 
-		Player* player = item->getParent()->getCreature()->getPlayer();
 		int32_t index = player ? player->getThingIndex(item) : -1;
 		needUpdate = needUpdate && index != -1;
 
@@ -5076,39 +5098,26 @@ void Game::updatePlayerHelpers(const Player& player)
 
 void Game::updateCreatureType(Creature* creature)
 {
-  const Player* masterPlayer = nullptr;
+	const Player* masterPlayer = nullptr;
 
-  CreatureType_t creatureType = creature->getType();
-  if (creatureType == CREATURETYPE_MONSTER) {
-    const Creature* master = creature->getMaster();
-    if (master) {
-      masterPlayer = master->getPlayer();
-      if (masterPlayer && masterPlayer->getProtocolVersion() < 1120) {
-        creatureType = CREATURETYPE_SUMMON_OTHERS;
-      } else {
-        creatureType = CREATURETYPE_SUMMONPLAYER;
-      }
-    }
-  }
+	CreatureType_t creatureType = creature->getType();
+	if (creatureType == CREATURETYPE_MONSTER) {
+		const Creature* master = creature->getMaster();
+		if (master) {
+			masterPlayer = master->getPlayer();
+			if (masterPlayer) {
+				creatureType = CREATURETYPE_SUMMONPLAYER;
+			}
+		}
+	}
 
-  //send to clients
-  SpectatorHashSet spectators;
-  map.getSpectators(spectators, creature->getPosition(), true, true);
+	//send to clients
+	SpectatorHashSet spectators;
+	map.getSpectators(spectators, creature->getPosition(), true, true);
 
-  if (creatureType == CREATURETYPE_SUMMON_OTHERS && masterPlayer->getProtocolVersion() < 1120) {
-    for (Creature* spectator : spectators) {
-      Player* player = spectator->getPlayer();
-      if (masterPlayer == player) {
-        player->sendCreatureType(creature, CREATURETYPE_SUMMON_OWN);
-      } else {
-        player->sendCreatureType(creature, creatureType);
-      }
-    }
-  } else {
-    for (Creature* spectator : spectators) {
-      spectator->getPlayer()->sendCreatureType(creature, creatureType);
-    }
-  }
+	for (Creature* spectator : spectators) {
+		spectator->getPlayer()->sendCreatureType(creature, creatureType);
+	}
 }
 
 void Game::updatePremium(Account& account)
@@ -5276,143 +5285,6 @@ bool Game::loadExperienceStages()
 		}
 	}
 	return true;
-}
-
-bool Game::loadSkillStages()
-{
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_file("data/XML/skillstages.xml");
-  if (!result) {
-    printXMLError("Error - Game::loadSkillStages", "data/XML/skillstages.xml", result);
-    return false;
-  }
-
-  for (auto stageNode : doc.child("skillstages").children()) {
-    if (strcasecmp(stageNode.name(), "skills") == 0) {
-      stagesSkillEnabled = stageNode.attribute("enabled").as_bool();
-      for (auto stage1 : stageNode.children()) {
-        uint32_t minLevel, maxLevel, multiplier;
-
-        pugi::xml_attribute minLevelAttribute = stage1.attribute("minskill");
-        if (minLevelAttribute) {
-          minLevel = pugi::cast<uint32_t>(minLevelAttribute.value());
-        }
-        else {
-          minLevel = 1;
-        }
-
-        pugi::xml_attribute maxLevelAttribute = stage1.attribute("maxskill");
-        if (maxLevelAttribute) {
-          maxLevel = pugi::cast<uint32_t>(maxLevelAttribute.value());
-        }
-        else {
-          maxLevel = 0;
-          lastStageSkill = minLevel;
-          useLastStageSkill = true;
-        }
-
-        pugi::xml_attribute multiplierAttribute = stage1.attribute("multiplier");
-        if (multiplierAttribute) {
-          multiplier = pugi::cast<uint32_t>(multiplierAttribute.value());
-        }
-        else {
-          multiplier = 1;
-        }
-
-        if (useLastStageSkill) {
-          stagesSkill[lastStageSkill] = multiplier;
-        }
-        else {
-          for (uint32_t i = minLevel; i <= maxLevel; ++i) {
-            stagesSkill[i] = multiplier;
-          }
-        }
-      }
-    }
-  }
-  return true;
-}
-
-uint64_t Game::getSkillStage(uint32_t level)
-{
-  if (!stagesSkillEnabled) {
-    return g_config.getNumber(ConfigManager::RATE_SKILL);
-  }
-
-  if (useLastStageSkill && level >= lastStageSkill) {
-    return stagesSkill[lastStageSkill];
-  }
-
-  return stagesSkill[level];
-}
-
-
-bool Game::loadMagicLevelStages()
-{
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_file("data/XML/skillstages.xml");
-  if (!result) {
-    printXMLError("Error - Game::loadMagicLevelStages", "data/XML/skillstages.xml", result);
-    return false;
-  }
-
-  for (auto stageNode : doc.child("skillstages").children()) {
-    if (strcasecmp(stageNode.name(), "magiclevel") == 0) {
-      stagesMlEnabled = stageNode.attribute("enabled").as_bool();
-      for (auto stage1 : stageNode.children()) {
-        uint32_t minLevel, maxLevel, multiplier;
-
-        pugi::xml_attribute minLevelAttribute = stage1.attribute("minmagic");
-        if (minLevelAttribute) {
-          minLevel = pugi::cast<uint32_t>(minLevelAttribute.value());
-        }
-        else {
-          minLevel = 1;
-        }
-
-        pugi::xml_attribute maxLevelAttribute = stage1.attribute("maxmagic");
-        if (maxLevelAttribute) {
-          maxLevel = pugi::cast<uint32_t>(maxLevelAttribute.value());
-        }
-        else {
-          maxLevel = 0;
-          lastStageMl = minLevel;
-          useLastStageMl = true;
-        }
-
-        pugi::xml_attribute multiplierAttribute = stage1.attribute("multiplier");
-        if (multiplierAttribute) {
-          multiplier = pugi::cast<uint32_t>(multiplierAttribute.value());
-        }
-        else {
-          multiplier = 1;
-        }
-
-        if (useLastStageMl) {
-          stagesMl[lastStageMl] = multiplier;
-        }
-        else {
-          for (uint32_t i = minLevel; i <= maxLevel; ++i) {
-            stagesMl[i] = multiplier;
-          }
-        }
-      }
-    }
-  }
-  return true;
-}
-
-uint64_t Game::getMagicLevelStage(uint32_t level)
-{
-  if (!stagesMlEnabled) {
-    return g_config.getNumber(ConfigManager::RATE_MAGIC);
-  }
-
-  if (useLastStageMl && level >= lastStageMl) {
-    return stagesMl[lastStageMl];
-  }
-
-  return stagesMl[level];
 }
 
 void Game::playerInviteToParty(uint32_t playerId, uint32_t invitedId)
@@ -5672,9 +5544,10 @@ void Game::playerBrowseMarketOwnHistory(uint32_t playerId)
 	player->sendMarketBrowseOwnHistory(buyOffers, sellOffers);
 }
 
-void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spriteId, uint16_t amount, uint32_t price, bool anonymous) //Custom: Anti bug do market
+void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spriteId, uint16_t amount, uint32_t price, bool anonymous) // Limit of 64k of items to create offer
 {
-	if (amount == 0 || amount > 100) {
+	// 64000 is size of the client limitation
+	if (amount == 0 || amount > 64000) {
 		return;
 	}
 
@@ -5695,7 +5568,7 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 		return;
 	}
 
-	//Custom: Anti bug do market
+	// Check market exhausted
 	if (player->isMarketExhausted()) {
 		player->sendCancelMessage(RETURNVALUE_YOUAREEXHAUSTED);
 		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
@@ -5722,7 +5595,8 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 	}
 
 	const uint32_t maxOfferCount = g_config.getNumber(ConfigManager::MAX_MARKET_OFFERS_AT_A_TIME_PER_PLAYER);
-	if (maxOfferCount != 0 && IOMarket::getPlayerOfferCount(player->getGUID()) >= maxOfferCount) {
+	if (maxOfferCount != 0 && 
+		IOMarket::getPlayerOfferCount(player->getGUID()) >= maxOfferCount) {
 		return;
 	}
 
@@ -5733,17 +5607,18 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 		fee = 1000;
 	}
 
-	if (type == MARKETACTION_SELL) {
-		if (fee > player->bankBalance) {
-			return;
-		}
+	if (type == MARKETACTION_SELL) {	
 
+		if (fee > (player->getBankBalance() + player->getMoney())) {
+			return;
+		}	
+		
 		DepotLocker* depotLocker = player->getDepotLocker(player->getLastDepotId());
 		if (!depotLocker) {
 			return;
 		}
 
-		if (it.id == ITEM_TIBIA_COIN) {
+		if (it.id == ITEM_STORE_COIN) {
 			if (amount > IOAccount::getCoinBalance(player->getAccount())) {
 				return;
 			}
@@ -5774,15 +5649,37 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 			}
 		}
 
-		player->bankBalance -= fee;
+		if(fee <= player->getBankBalance())
+		{
+			player->setBankBalance(player->getBankBalance() - fee);
+		}
+		else
+		{
+			uint64_t remainsFee = 0;
+			remainsFee = fee - player->getBankBalance();
+			player->setBankBalance(0);
+			g_game.removeMoney(player, remainsFee);
+		}
+		
 	} else {
-		uint64_t totalPrice = static_cast<uint64_t>(price) * amount;
+
+		uint64_t totalPrice = price * amount;
 		totalPrice += fee;
-		if (totalPrice > player->bankBalance) {
+		if (totalPrice > (player->getMoney() + player->getBankBalance())) {
 			return;
 		}
 
-		player->bankBalance -= totalPrice;
+		// Have enough money on the bank
+		if(totalPrice <= player->getBankBalance())
+		{
+			player->setBankBalance(player->getBankBalance() - totalPrice);
+		}
+		else
+		{
+			uint64_t remainsPrice = 0;
+			remainsPrice = totalPrice - player->getBankBalance();
+			g_game.removeMoney(player, remainsPrice);
+		}
 	}
 
 	IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.id, amount, price, anonymous);
@@ -5792,11 +5689,11 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 	const MarketOfferList& sellOffers = IOMarket::getActiveOffers(MARKETACTION_SELL, it.id);
 	player->sendMarketBrowseItem(it.id, buyOffers, sellOffers);
 
-	//Custom: Anti bug do market
-	player->updateMarketExhausted();
+	// 
+	player->updateMarketExhausted(); // Exhausted for create offert in the market
 }
 
-void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter) //Custom: Anti bug do market
+void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter) // Market cancel offer
 {
 	Player* player = getPlayerByID(playerId);
 	if (!player) {
@@ -5807,7 +5704,7 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 		return;
 	}
 
-	//Custom: Anti bug do market
+	// Check market exhausted
 	if (player->isMarketExhausted()) {
 		player->sendCancelMessage(RETURNVALUE_YOUAREEXHAUSTED);
 		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
@@ -5820,7 +5717,7 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 	}
 
 	if (offer.type == MARKETACTION_BUY) {
-		player->bankBalance += static_cast<uint64_t>(offer.price) * offer.amount;
+		player->setBankBalance( player->getBankBalance() + static_cast<uint64_t>(offer.price) * offer.amount);
 		player->sendMarketEnter(player->getLastDepotId());
 	} else {
 		const ItemType& it = Item::items[offer.itemId];
@@ -5828,7 +5725,7 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 			return;
 		}
 
-		if (it.id == ITEM_TIBIA_COIN) {
+		if (it.id == ITEM_STORE_COIN) {
 			IOAccount::addCoins(player->getAccount(), offer.amount);
 		}
 		else if (it.stackable) {
@@ -5866,13 +5763,12 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 	offer.timestamp += g_config.getNumber(ConfigManager::MARKET_OFFER_DURATION);
 	player->sendMarketCancelOffer(offer);
 	player->sendMarketEnter(player->getLastDepotId());
-	//Custom: Anti bug do market
-	player->updateMarketExhausted();
+	player->updateMarketExhausted(); // Exhausted for cancel offer in the market
 }
 
-void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter, uint16_t amount) //Custom: Anti bug do market
+void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter, uint16_t amount) // Limit of 64k of items to create offer
 {
-	if (amount == 0 || amount > 500) {
+	if (amount == 0 || amount > 64000) {
 		return;
 	}
 
@@ -5885,7 +5781,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 		return;
 	}
 
-	//Custom: Anti bug do market
+	// Check market exhausted
 	if (player->isMarketExhausted()) {
 		player->sendCancelMessage(RETURNVALUE_YOUAREEXHAUSTED);
 		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);
@@ -5906,8 +5802,10 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 		return;
 	}
 
-	uint64_t totalPrice = static_cast<uint64_t>(offer.price) * amount;
+	uint64_t totalPrice = offer.price * amount;
 
+	// The player has an offer to by something and someone is going to sell to it
+	// so the market action is 'buy' as who created the offer is buying.
 	if (offer.type == MARKETACTION_BUY) {
 		DepotLocker* depotLocker = player->getDepotLocker(player->getLastDepotId());
 		if (!depotLocker) {
@@ -5923,15 +5821,15 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 			}
 		}
 
-		if (it.id == ITEM_TIBIA_COIN) {
+		if (it.id == ITEM_STORE_COIN) {
 			if (amount > IOAccount::getCoinBalance(player->getAccount())) {
 				return;
 			}
 
-			IOAccount::removeCoins(player->getAccount(), static_cast<int32_t>(amount));
-			IOAccount::registerTransaction(player->getAccount(), -static_cast<int32_t>(amount), "Sold on Market");
+			IOAccount::removeCoins(player->getAccount(), amount);
+			IOAccount::registerTransaction(player->getAccount(), -amount, "Sold on Market");
 
-		} else {
+		} else { 
 			std::forward_list<Item*> itemList = getMarketItemList(it.wareId, amount, depotLocker);
 			if (itemList.empty()) {
 				return;
@@ -5954,10 +5852,9 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 				}
 			}
 		}
+		player->setBankBalance(player->getBankBalance() + totalPrice);
 
-		player->bankBalance += totalPrice;
-
-		if (it.id == ITEM_TIBIA_COIN) {
+		if (it.id == ITEM_STORE_COIN) {
 			IOAccount::addCoins(buyerPlayer->getAccount(), amount);
 			IOAccount::registerTransaction(buyerPlayer->getAccount(), amount, "Purchased on Market");
 		}else if (it.stackable) {
@@ -5993,13 +5890,26 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 			IOLoginData::savePlayer(buyerPlayer);
 			delete buyerPlayer;
 		}
-	} else {
-		if (totalPrice > player->bankBalance) {
+	} else {//MARKETACTION_SELL
+		
+		if (totalPrice > (player->getBankBalance() + player->getMoney())) {
 			return;
+		}	
+		
+		// Have enough money on the bank
+		if(totalPrice <= player->getBankBalance())
+		{
+			player->setBankBalance(player->getBankBalance() - totalPrice);
+		}
+		else
+		{
+			uint64_t remainsPrice = 0;
+			remainsPrice = totalPrice - player->getBankBalance();
+			player->setBankBalance(0);
+			g_game.removeMoney(player, remainsPrice);
 		}
 
-		player->bankBalance -= totalPrice;
-		if (it.id == ITEM_TIBIA_COIN) {
+		if (it.id == ITEM_STORE_COIN) {
 			IOAccount::addCoins(player->getAccount(), amount);
 			IOAccount::registerTransaction(player->getAccount(), amount, "Purchased on Market");
 		} else if (it.stackable) {
@@ -6033,25 +5943,25 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 
 		Player* sellerPlayer = getPlayerByGUID(offer.playerId);
 		if (sellerPlayer) {
-			sellerPlayer->bankBalance += totalPrice;
-			if (it.id == ITEM_TIBIA_COIN) {
-				IOAccount::registerTransaction(sellerPlayer->getAccount(), -static_cast<int32_t>(amount), "Sold on Market");
+			sellerPlayer->setBankBalance(sellerPlayer->getBankBalance() + totalPrice);
+			if (it.id == ITEM_STORE_COIN) {
+				IOAccount::registerTransaction(sellerPlayer->getAccount(), -amount, "Sold on Market");
 			}
 		} else {
 			IOLoginData::increaseBankBalance(offer.playerId, totalPrice);
-			if (it.id == ITEM_TIBIA_COIN) {
+			if (it.id == ITEM_STORE_COIN) {
 				sellerPlayer = new Player(nullptr);
 
 				if (IOLoginData::loadPlayerById(sellerPlayer, offer.playerId)) {
-					IOAccount::registerTransaction(sellerPlayer->getAccount(), -static_cast<int32_t>(amount), "Sold on Market");
+					IOAccount::registerTransaction(sellerPlayer->getAccount(), -amount, "Sold on Market");
 		}
 
 				delete sellerPlayer;
 			}
 		}
-		if (it.id != ITEM_TIBIA_COIN) {
+		if (it.id != ITEM_STORE_COIN) {
 		player->onReceiveMail();
-	}
+		}
 	}
 
 	const int32_t marketOfferDuration = g_config.getNumber(ConfigManager::MARKET_OFFER_DURATION);
@@ -6072,8 +5982,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 	offer.timestamp += marketOfferDuration;
 	player->sendMarketAcceptOffer(offer);
 
-	//Custom: Anti bug do market
-	player->updateMarketExhausted();
+	player->updateMarketExhausted(); // Exhausted for accept offer in the market
 }
 
 void Game::playerStoreOpen(uint32_t playerId, uint8_t serviceType)
@@ -6763,7 +6672,6 @@ bool Game::reload(ReloadTypes_t reloadType)
 			return true;
 		}
 
-		case RELOAD_TYPE_QUESTS: return quests.reload();
 		case RELOAD_TYPE_RAIDS: return raids.reload() && raids.startup();
 
 		case RELOAD_TYPE_SPELLS: {
@@ -6813,7 +6721,6 @@ bool Game::reload(ReloadTypes_t reloadType)
 			g_weapons->reload();
 			g_weapons->clear(true);
 			g_weapons->loadDefaults();
-			quests.reload();
 			mounts.reload();
 			g_globalEvents->reload();
 			g_events->load();

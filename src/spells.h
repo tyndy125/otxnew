@@ -1,4 +1,6 @@
 /**
+ * @file spells.h
+ * 
  * The Forgotten Server - a free and open-source MMORPG server emulator
  * Copyright (C) 2019 Mark Samman <mark.samman@gmail.com>
  *
@@ -17,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef FS_SPELLS_H_D78A7CCB7080406E8CAA6B1D31D3DA71
-#define FS_SPELLS_H_D78A7CCB7080406E8CAA6B1D31D3DA71
+#ifndef OT_SRC_SPELLS_H_
+#define OT_SRC_SPELLS_H_
 
 #include "luascript.h"
 #include "player.h"
@@ -63,10 +65,6 @@ class Spells final : public BaseEvents
 		const std::map<std::string, InstantSpell>& getInstantSpells() const {
 			return instants;
 		};
-
-    const std::map<uint16_t, RuneSpell>& getRuneSpells() const {
-      return runes;
-    };
 
 		void clearMaps(bool fromLua);
 		void clear(bool fromLua) override final;
@@ -213,13 +211,13 @@ class Spell : public BaseSpell
 			vocSpellMap[n] = b;
 		}
 
-		const SpellGroup_t getGroup() const {
+		SpellGroup_t getGroup() {
 			return group;
 		}
 		void setGroup(SpellGroup_t g) {
 			group = g;
 		}
-		const SpellGroup_t getSecondaryGroup() const {
+		SpellGroup_t getSecondaryGroup() {
 			return secondaryGroup;
 		}
 		void setSecondaryGroup(SpellGroup_t g) {
@@ -345,7 +343,7 @@ class InstantSpell final : public TalkAction, public Spell
 
 		bool configureEvent(const pugi::xml_node& node) override;
 
-    virtual bool playerCastInstant(Player* player, std::string& param);
+		virtual bool playerCastInstant(Player* player, std::string& param);
 
 		bool castSpell(Creature* creature) override;
 		bool castSpell(Creature* creature, Creature* target) override;
@@ -408,9 +406,7 @@ class RuneSpell final : public Action, public Spell
 
 		bool configureEvent(const pugi::xml_node& node) override;
 
-    bool canUseRune(const Player* player, bool ignoreLevel = false);
-
-    ReturnValue canExecuteAction(const Player* player, const Position& toPos) override;
+		ReturnValue canExecuteAction(const Player* player, const Position& toPos) override;
 		bool hasOwnErrorHandler() override {
 			return true;
 		}

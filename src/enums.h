@@ -1,4 +1,6 @@
 /**
+ * @file enums.h
+ * 
  * The Forgotten Server - a free and open-source MMORPG server emulator
  * Copyright (C) 2019 Mark Samman <mark.samman@gmail.com>
  *
@@ -17,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef FS_ENUMS_H_003445999FEE4A67BCECBE918B0124CE
-#define FS_ENUMS_H_003445999FEE4A67BCECBE918B0124CE
+#ifndef OT_SRC_ENUMS_H_
+#define OT_SRC_ENUMS_H_
 
 enum RuleViolationType_t : uint8_t {
 	REPORT_TYPE_NAME = 0,
@@ -91,7 +93,6 @@ enum itemAttrTypes : uint32_t {
 	ITEM_ATTRIBUTE_DOORID = 1 << 22,
 	ITEM_ATTRIBUTE_SPECIAL = 1 << 23,
 	ITEM_ATTRIBUTE_IMBUINGSLOTS = 1 << 24,
-
 	ITEM_ATTRIBUTE_CUSTOM = 1U << 31
 };
 
@@ -166,14 +167,14 @@ enum PreySlotNum_t : uint8_t
 	PREY_SLOTNUM_THIRD = 2,
 };
 
-enum PreySlotStatus_t : uint8_t
+enum PreySlotStatus_t : uint16_t
 {
 	PREY_SLOT_LOCKED = 0,
 	PREY_SLOT_UNLOCKED = 1,
 };
 
 
-enum PreyState_t : uint8_t
+enum PreyState_t : uint16_t
 {
 	PREY_STATE_LOCKED = 0,
 	PREY_STATE_INACTIVE = 1,
@@ -310,8 +311,6 @@ enum ConditionParam_t {
 	CONDITION_PARAM_SKILL_MANA_LEECH_CHANCE = 51,
 	CONDITION_PARAM_SKILL_MANA_LEECH_AMOUNT = 52,
 	CONDITION_PARAM_DISABLE_DEFENSE = 53,
-  CONDITION_PARAM_STAMINAGAIN = 54,
-  CONDITION_PARAM_STAMINATICKS = 55,
 };
 
 enum BlockType_t : uint8_t {
@@ -375,7 +374,7 @@ enum ConditionType_t {
 	CONDITION_MANASHIELD = 1 << 9,
 	CONDITION_INFIGHT = 1 << 10,
 	CONDITION_DRUNK = 1 << 11,
-	CONDITION_EXHAUST_WEAPON = 1 << 12, // unused
+	CONDITION_EXHAUST = 1 << 12, // unused
 	CONDITION_REGENERATION = 1 << 13,
 	CONDITION_SOUL = 1 << 14,
 	CONDITION_DROWN = 1 << 15,
@@ -391,10 +390,6 @@ enum ConditionType_t {
 	CONDITION_PACIFIED = 1 << 25,
 	CONDITION_SPELLCOOLDOWN = 1 << 26,
 	CONDITION_SPELLGROUPCOOLDOWN = 1 << 27,
-  CONDITION_STAMINAREGEN = 1 << 28,
-  CONDITION_SOULBONUS = 1 << 29,
-  CONDITION_EXHAUST = 1 << 30, //NON-DEFAULT /*leu
-  CONDITION_SUMMON = 1 << 31, // stay here for add new summons system
 };
 
 enum ConditionId_t : int8_t {
@@ -547,16 +542,6 @@ enum MapMark_t
 	MAPMARK_GREENSOUTH = 19,
 };
 
-enum StreakBonus_t : int8_t {
-  STREAKBONUS_NOBONUS = 0,
-  STREAKBONUS_HEALTHBONUS = 1,
-  STREAKBONUS_MANABONUS = 2,
-  STREAKBONUS_STAMINABONUS = 3,
-  STREAKBONUS_DOUBLEHEALTHBONUS = 4,
-  STREAKBONUS_DOUBLEMANABONUS = 5,
-  STREAKBONUS_SOULBONUS = 6
-};
-
 struct Outfit_t {
 	uint16_t lookType = 0;
 	uint16_t lookTypeEx = 0;
@@ -572,7 +557,7 @@ struct LightInfo {
 	uint8_t level = 0;
 	uint8_t color = 0;
 	constexpr LightInfo() = default;
-	constexpr LightInfo(uint8_t level, uint8_t color) : level(level), color(color) {}
+	constexpr LightInfo(uint8_t newLevel, uint8_t newColor) : level(newLevel), color(newColor) {}
 };
 
 struct ShopInfo {
@@ -589,8 +574,8 @@ struct ShopInfo {
 		sellPrice = 0;
 	}
 
-	ShopInfo(uint16_t itemId, int32_t subType = 0, uint32_t buyPrice = 0, uint32_t sellPrice = 0, std::string realName = "")
-		: itemId(itemId), subType(subType), buyPrice(buyPrice), sellPrice(sellPrice), realName(std::move(realName)) {}
+	ShopInfo(uint16_t newItemId, int32_t newSubType = 0, uint32_t newBuyPrice = 0, uint32_t newSellPrice = 0, std::string newRealName = "")
+		: itemId(newItemId), subType(newSubType), buyPrice(newBuyPrice), sellPrice(newSellPrice), realName(std::move(newRealName)) {}
 };
 
 struct MarketOffer {
@@ -650,8 +635,8 @@ struct ModalWindow
 	uint8_t defaultEnterButton, defaultEscapeButton;
 	bool priority;
 
-	ModalWindow(uint32_t id, std::string title, std::string message)
-		: title(std::move(title)), message(std::move(message)), id(id), defaultEnterButton(0xFF), defaultEscapeButton(0xFF), priority(false) {}
+	ModalWindow(uint32_t newId, std::string newTitle, std::string newMessage)
+		: title(std::move(newTitle)), message(std::move(newMessage)), id(newId), defaultEnterButton(0xFF), defaultEscapeButton(0xFF), priority(false) {}
 };
 
 enum CombatOrigin
@@ -687,5 +672,14 @@ struct CombatDamage
 using MarketOfferList = std::list<MarketOffer>;
 using HistoryMarketOfferList = std::list<HistoryMarketOffer>;
 using ShopInfoList = std::list<ShopInfo>;
+
+enum MonstersEvent_t : uint8_t {
+	MONSTERS_EVENT_NONE = 0,
+	MONSTERS_EVENT_THINK = 1,
+	MONSTERS_EVENT_APPEAR = 2,
+	MONSTERS_EVENT_DISAPPEAR = 3,
+	MONSTERS_EVENT_MOVE = 4,
+	MONSTERS_EVENT_SAY = 5,
+};
 
 #endif

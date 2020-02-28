@@ -1,4 +1,6 @@
 /**
+ * @file game.h
+ * 
  * The Forgotten Server - a free and open-source MMORPG server emulator
  * Copyright (C) 2019 Mark Samman <mark.samman@gmail.com>
  *
@@ -17,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef FS_GAME_H_3EC96D67DD024E6093B3BAC29B7A6D7F
-#define FS_GAME_H_3EC96D67DD024E6093B3BAC29B7A6D7F
+#ifndef OT_SRC_GAME_H_
+#define OT_SRC_GAME_H_
 
 #include "account.h"
 #include "combat.h"
@@ -31,7 +33,6 @@
 #include "raids.h"
 #include "npc.h"
 #include "wildcardtree.h"
-#include "quests.h"
 #include "gamestore.h"
 
 class ServiceManager;
@@ -478,13 +479,7 @@ class Game
 		bool loadExperienceStages();
 		uint64_t getExperienceStage(uint32_t level);
 
-    bool loadSkillStages();
-    uint64_t getSkillStage(uint32_t level);
-
-    bool loadMagicLevelStages();
-    uint64_t getMagicLevelStage(uint32_t level);
-
-    void loadMotdNum();
+		void loadMotdNum();
 		void saveMotdNum() const;
 		const std::string& getMotdHash() const { return motdHash; }
 		uint32_t getMotdNum() const { return motdNum; }
@@ -531,7 +526,6 @@ class Game
 		Map map;
 		Mounts mounts;
 		Raids raids;
-		Quests quests;
 		GameStore gameStore;
 
 		std::forward_list<Item*> toDecayItems;
@@ -554,8 +548,6 @@ class Game
 		std::unordered_map<uint32_t, Guild*> guilds;
 		std::unordered_map<uint16_t, Item*> uniqueItems;
 		std::map<uint32_t, uint32_t> stages;
-    std::map<uint32_t, uint32_t> stagesSkill;
-    std::map<uint32_t, uint32_t> stagesMl;
 
 		std::list<Item*> decayItems[EVENT_DECAY_BUCKETS];
 		std::list<Creature*> checkCreatureLists[EVENT_CREATURECOUNT];
@@ -607,14 +599,6 @@ class Game
 		uint32_t lastStageLevel = 0;
 		bool stagesEnabled = false;
 		bool useLastStageLevel = false;
-
-    uint32_t lastStageSkill = 0;
-    bool stagesSkillEnabled = false;
-    bool useLastStageSkill = false;
-
-    uint32_t lastStageMl = 0;
-    bool stagesMlEnabled = false;
-    bool useLastStageMl = false;
 };
 
 #endif

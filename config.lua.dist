@@ -39,11 +39,6 @@ maxPacketsPerSecond = 25
 maxItem = 2000
 maxContainer = 100
 
--- 0 = Disable,
--- 1 = onKillMonster,
--- 2 = onOpenCorpse -- restart required]]
-autolootmode = 1
-
 -- Version Manual
 clientVersionMin = 1100
 clientVersionMax = 1200
@@ -52,13 +47,10 @@ clientVersionStr = "Only support outdated 10.00 and version 12.00"
 -- Depot Limit
 freeDepotLimit = 2000
 premiumDepotLimit = 10000
-depotBoxes = 18
+depotBoxes = 17
 
 -- GameStore
 gamestoreByModules = true
-
--- Quest Sytem
-loadQuestLua = true
 
 -- Expert Pvp Config
 expertPvp = false
@@ -77,14 +69,14 @@ houseRentPeriod = "never"
 -- Item Usage
 -- Do not touch here
 -- Avoid use of WIPE program to crash the distro
-timeBetweenActions = 700
-timeBetweenExActions = 1200
+timeBetweenActions = 500
+timeBetweenExActions = 700
 
 -- Map
 -- NOTE: set mapName WITHOUT .otbm at the end
 -- NOTE: unzip the map world.rar
 mapName = "realmap"
-mapAuthor = "Cipsoft"
+mapAuthor = "CipSoft"
 
 -- Market
 marketOfferDuration = 30 * 24 * 60 * 60
@@ -96,10 +88,9 @@ maxMarketOffersAtATimePerPlayer = 100
 mysqlHost = "127.0.0.1"
 mysqlUser = "root"
 mysqlPass = ""
-mysqlDatabase = "otxserver"
+mysqlDatabase = "otxserver-global"
 mysqlPort = 3306
 mysqlSock = ""
-passwordType = "sha1"
 
 -- Misc.
 allowChangeOutfit = true
@@ -111,9 +102,18 @@ maxMessageBuffer = 4
 emoteSpells = false
 classicEquipmentSlots = false
 allowWalkthrough = true
-coinPacketSize = 1
-coinImagesURL = "http://localhost/images/store/"
+coinPacketSize = 25
+coinImagesURL = "http://127.0.0.1/images/store/"
 classicAttackSpeed = false
+showScriptsLogInConsole = false
+
+-- Server Save
+-- NOTE: serverSaveNotifyDuration in minutes
+serverSaveNotifyMessage = true
+serverSaveNotifyDuration = 5
+serverSaveCleanMap = false
+serverSaveClose = false
+serverSaveShutdown = true
 
 -- Rates
 -- NOTE: rateExp is not used if you have enabled stages in data/XML/stages.xml
@@ -148,5 +148,5 @@ startupDatabaseOptimization = true
 -- Status server information
 ownerName = "Erick Nunes"
 ownerEmail = "erickzenho@live.com"
-url = "www.otland.net"
-location = "Brasil"
+url = "https://github.com/malucooo/otxserver-new"
+location = "South America"

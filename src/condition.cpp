@@ -1,4 +1,6 @@
 /**
+ * @file condition.cpp
+ * 
  * The Forgotten Server - a free and open-source MMORPG server emulator
  * Copyright (C) 2019 Mark Samman <mark.samman@gmail.com>
  *
@@ -175,13 +177,7 @@ Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, in
 		case CONDITION_SOUL:
 			return new ConditionSoul(id, type, ticks, buff, subId);
 
-    case CONDITION_SOULBONUS:
-      return new ConditionSoulBonus(id, type, ticks, buff, subId);
-
-    case CONDITION_STAMINAREGEN:
-      return new ConditionStamina(id, type, ticks, buff, subId);
-
-    case CONDITION_ATTRIBUTES:
+		case CONDITION_ATTRIBUTES:
 			return new ConditionAttributes(id, type, ticks, buff, subId);
 
 		case CONDITION_SPELLCOOLDOWN:
@@ -440,17 +436,18 @@ void ConditionAttributes::updatePercentStats(Player* player)
 
 void ConditionAttributes::updateStats(Player* player)
 {
-	bool needUpdateStats = false;
+	bool needUpdate = false;
 
 	for (int32_t i = STAT_FIRST; i <= STAT_LAST; ++i) {
 		if (stats[i]) {
-			needUpdateStats = true;
+			needUpdate = true;
 			player->setVarStats(static_cast<stats_t>(i), stats[i]);
 		}
 	}
 
-	if (needUpdateStats) {
+	if (needUpdate) {
 		player->sendStats();
+		player->sendSkills();
 	}
 }
 
@@ -491,30 +488,25 @@ void ConditionAttributes::endCondition(Creature* creature)
 {
 	Player* player = creature->getPlayer();
 	if (player) {
-		bool needUpdateSkills = false;
+		bool needUpdate = false;
 
 		for (int32_t i = SKILL_FIRST; i <= SKILL_LAST; ++i) {
 			if (skills[i] || skillsPercent[i]) {
-				needUpdateSkills = true;
+				needUpdate = true;
 				player->setVarSkill(static_cast<skills_t>(i), -skills[i]);
 			}
 		}
 
-		if (needUpdateSkills) {
-			player->sendSkills();
-		}
-
-		bool needUpdateStats = false;
-
 		for (int32_t i = STAT_FIRST; i <= STAT_LAST; ++i) {
 			if (stats[i]) {
-				needUpdateStats = true;
+				needUpdate = true;
 				player->setVarStats(static_cast<stats_t>(i), -stats[i]);
 			}
 		}
 
-		if (needUpdateStats) {
+		if (needUpdate) {
 			player->sendStats();
+			player->sendSkills();
 		}
 	}
 
@@ -733,37 +725,13 @@ bool ConditionRegeneration::executeCondition(Creature* creature, int32_t interva
 	internalHealthTicks += interval;
 	internalManaTicks += interval;
 
-  if (creature->getZone() != ZONE_PROTECTION || ((creature->getZone() == ZONE_PROTECTION) && (creature->getPlayer() &&
-    (creature->getPlayer()->getStreakDaysBonus() >
-      STREAKBONUS_NOBONUS)))) {
-    uint8_t multiplierHealth = 1;
-    uint8_t multiplierMana = 1;
-
-    if (creature->getZone() == ZONE_PROTECTION && creature->getPlayer() &&
-      (creature->getPlayer()->getStreakDaysBonus() > STREAKBONUS_NOBONUS)) {
-      StreakBonus_t bonusRegenStreakDays = creature->getPlayer()->getStreakDaysBonus();
-
-      switch (bonusRegenStreakDays) {
-      case STREAKBONUS_SOULBONUS:
-      case STREAKBONUS_DOUBLEMANABONUS:
-        multiplierMana = 2;
-      case STREAKBONUS_DOUBLEHEALTHBONUS:
-        multiplierHealth = 2;
-        break;
-      case STREAKBONUS_HEALTHBONUS:
-        multiplierMana = 0;
-        break;
-
-      default:
-        break;
-      }
-    }
-    if (internalHealthTicks >= healthTicks) {
+	if (creature->getZone() != ZONE_PROTECTION) {
+		if (internalHealthTicks >= healthTicks) {
 			internalHealthTicks = 0;
 
 			int32_t realHealthGain = creature->getHealth();
-      creature->changeHealth(healthGain * multiplierHealth);
-      realHealthGain = creature->getHealth() - realHealthGain;
+			creature->changeHealth(healthGain);
+			realHealthGain = creature->getHealth() - realHealthGain;
 
 			if (isBuff && realHealthGain > 0) {
 				Player* player = creature->getPlayer();
@@ -790,11 +758,11 @@ bool ConditionRegeneration::executeCondition(Creature* creature, int32_t interva
 			}
 		}
 
-    if (internalManaTicks >= manaTicks && multiplierMana > 0) {
-      internalManaTicks = 0;
-      creature->changeMana(manaGain * multiplierMana);
-    }
-  }
+		if (internalManaTicks >= manaTicks) {
+			internalManaTicks = 0;
+			creature->changeMana(manaGain);
+		}
+	}
 
 	return ConditionGeneric::executeCondition(creature, interval);
 }
@@ -889,176 +857,6 @@ bool ConditionSoul::setParam(ConditionParam_t param, int32_t value)
 		default:
 			return ret;
 	}
-}
-
-void ConditionSoulBonus::addCondition(Creature*, const Condition* addCondition)
-{
-  if (updateCondition(addCondition))
-  {
-    setTicks(addCondition->getTicks());
-
-    const ConditionSoulBonus& conditionSoul = static_cast<const ConditionSoulBonus&>(*addCondition);
-
-    soulTicks = conditionSoul.soulTicks;
-    soulGain = conditionSoul.soulGain;
-  }
-}
-
-bool ConditionSoulBonus::unserializeProp(ConditionAttr_t attr, PropStream& propStream)
-{
-  if (attr == CONDITIONATTR_SOULGAIN)
-  {
-    return propStream.read<uint32_t>(soulGain);
-  }
-  else if (attr == CONDITIONATTR_SOULTICKS)
-  {
-    return propStream.read<uint32_t>(soulTicks);
-  }
-  return Condition::unserializeProp(attr, propStream);
-}
-
-void ConditionSoulBonus::serialize(PropWriteStream& propWriteStream)
-{
-  Condition::serialize(propWriteStream);
-
-  propWriteStream.write<uint8_t>(CONDITIONATTR_SOULGAIN);
-  propWriteStream.write<uint32_t>(soulGain);
-
-  propWriteStream.write<uint8_t>(CONDITIONATTR_SOULTICKS);
-  propWriteStream.write<uint32_t>(soulTicks);
-}
-
-bool ConditionSoulBonus::executeCondition(Creature* creature, int32_t interval)
-{
-  internalSoulTicks += interval;
-
-  if (Player * player = creature->getPlayer())
-  {
-    if (player->getZone() == ZONE_PROTECTION)
-    {
-      if (internalSoulTicks >= soulTicks)
-      {
-        internalSoulTicks = 0;
-        player->changeSoul(soulGain);
-      }
-    }
-  }
-
-  return ConditionGeneric::executeCondition(creature, interval);
-}
-
-bool ConditionSoulBonus::setParam(ConditionParam_t param, int32_t value)
-{
-  bool ret = ConditionGeneric::setParam(param, value);
-  switch (param)
-  {
-  case CONDITION_PARAM_SOULGAIN:
-    soulGain = value;
-    return true;
-
-  case CONDITION_PARAM_SOULTICKS:
-    soulTicks = value;
-    return true;
-
-  default:
-    return ret;
-  }
-}
-
-void ConditionStamina::addCondition(Creature* creature, const Condition* addCondition)
-{
-  if (updateCondition(addCondition))
-  {
-    setTicks(addCondition->getTicks());
-
-    const ConditionStamina& conditionStamina = static_cast<const ConditionStamina&>(*addCondition);
-
-    Player* player = creature->getPlayer();
-    uint16_t currentStamina = player->getStaminaMinutes();
-
-    staminaTicks = getStaminaTicksStage(currentStamina);
-    staminaGain = conditionStamina.staminaGain;
-  }
-}
-
-bool ConditionStamina::unserializeProp(ConditionAttr_t attr, PropStream& propStream)
-{
-  if (attr == CONDITIONATTR_STAMINAGAIN)
-  {
-    return propStream.read<uint16_t>(staminaGain);
-  }
-  else if (attr == CONDITIONATTR_STAMINATICKS)
-  {
-    return propStream.read<uint32_t>(staminaTicks);
-  }
-  return Condition::unserializeProp(attr, propStream);
-}
-
-void ConditionStamina::serialize(PropWriteStream& propWriteStream)
-{
-  Condition::serialize(propWriteStream);
-
-  propWriteStream.write<uint8_t>(CONDITIONATTR_STAMINAGAIN);
-  propWriteStream.write<uint16_t>(staminaGain);
-
-  propWriteStream.write<uint8_t>(CONDITIONATTR_STAMINATICKS);
-  propWriteStream.write<uint32_t>(staminaTicks);
-}
-
-bool ConditionStamina::executeCondition(Creature* creature, int32_t interval)
-{
-  internalStaminaTicks += interval;
-
-  if (Player * player = creature->getPlayer())
-  {
-    if (player->isPremium() && player->getZone() == ZONE_PROTECTION && player->getStreakDaysBonus() >= STREAKBONUS_STAMINABONUS)
-    {
-      if (internalStaminaTicks >= staminaTicks)
-      {
-        internalStaminaTicks = 0;
-
-        uint16_t currentStamina = player->getStaminaMinutes();
-        player->setStaminaMinutes(currentStamina + staminaGain);
-
-        staminaTicks = getStaminaTicksStage(player->getStaminaMinutes());
-      }
-    }
-  }
-
-  return ConditionGeneric::executeCondition(creature, interval);
-}
-
-bool ConditionStamina::setParam(ConditionParam_t param, int32_t value)
-{
-  bool ret = ConditionGeneric::setParam(param, value);
-  switch (param)
-  {
-  case CONDITION_PARAM_STAMINAGAIN:
-    staminaGain = value;
-    return true;
-
-  case CONDITION_PARAM_STAMINATICKS:
-    staminaTicks = value;
-    return true;
-
-  default:
-    return ret;
-  }
-}
-
-uint32_t ConditionStamina::getStaminaTicksStage(uint16_t currentStaminaMinutes)
-{
-  uint32_t staminaTicksStaged;
-  if (currentStaminaMinutes > 40 * 60)
-  {										 //above 40 hours
-    staminaTicksStaged = 10 * 60 * 1000; //10 minutes
-  }
-  else
-  {
-    staminaTicksStaged = 3 * 60 * 1000;
-  }
-
-  return staminaTicksStaged;
 }
 
 bool ConditionDamage::setParam(ConditionParam_t param, int32_t value)
@@ -1458,12 +1256,12 @@ void ConditionDamage::generateDamageList(int32_t amount, int32_t start, std::lis
 	}
 }
 
-void ConditionSpeed::setFormulaVars(float mina, float minb, float maxa, float maxb)
+void ConditionSpeed::setFormulaVars(float NewMina, float NewMinb, float NewMaxa, float NewMaxb)
 {
-	this->mina = mina;
-	this->minb = minb;
-	this->maxa = maxa;
-	this->maxb = maxb;
+	this->mina = NewMina;
+	this->minb = NewMinb;
+	this->maxa = NewMaxa;
+	this->maxb = NewMaxb;
 }
 
 void ConditionSpeed::getFormulaValues(int32_t var, int32_t& min, int32_t& max) const
@@ -1619,9 +1417,9 @@ void ConditionInvisible::endCondition(Creature* creature)
 	}
 }
 
-void ConditionOutfit::setOutfit(const Outfit_t& outfit)
+void ConditionOutfit::setOutfit(const Outfit_t& newOutfit)
 {
-	this->outfit = outfit;
+	this->outfit = newOutfit;
 }
 
 bool ConditionOutfit::unserializeProp(ConditionAttr_t attr, PropStream& propStream)
@@ -1691,11 +1489,11 @@ bool ConditionLight::executeCondition(Creature* creature, int32_t interval)
 
 	if (internalLightTicks >= lightChangeInterval) {
 		internalLightTicks = 0;
-		LightInfo lightInfo = creature->getCreatureLight();
+		LightInfo creatureLightInfo = creature->getCreatureLight();
 
-		if (lightInfo.level > 0) {
-			--lightInfo.level;
-			creature->setCreatureLight(lightInfo);
+		if (creatureLightInfo.level > 0) {
+			--creatureLightInfo.level;
+			creature->setCreatureLight(creatureLightInfo);
 			g_game.changeLight(creature);
 		}
 	}

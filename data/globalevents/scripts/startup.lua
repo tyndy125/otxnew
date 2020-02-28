@@ -21,7 +21,6 @@ GlobalStorage.FerumbrasAscendantQuest.Crystals.Crystal7,
 GlobalStorage.FerumbrasAscendantQuest.Crystals.Crystal8,
 GlobalStorage.FerumbrasAscendantQuest.Crystals.AllCrystals,
 GlobalStorage.FerumbrasAscendantQuest.FerumbrasEssence,
-GlobalStorage.FerumbrasAscendantQuest.TheShattererLever,
 GlobalStorage.Feroxa.Active,
 GlobalStorage.FerumbrasAscendantQuest.Habitats.AllHabitats,
 GlobalStorage.FerumbrasAscendantQuest.Elements.Active,
@@ -39,22 +38,6 @@ function onStartup()
 
 	local time = os.time()
 	db.asyncQuery('TRUNCATE TABLE `players_online`')
-
-	 --initializing lastServerSave storage
-	 local lastServerSave = math.max(tonumber(getGlobalStorageValueDB(GlobalStorage.LastServerSave)),0)
-	 if lastServerSave == 0 then
-		 print('[daily reward WARNING] LastServerSave is 0, reseting to now')
-		 lastServerSave = time
-	 elseif lastServerSave < (time - 24*60*60) then
- 
-		 print('[daily reward WARNING]: LastServerSave is more than 24 hours old, falling back to the last eligible time...')
-		 while(lastServerSave<(time - 24*60*60)) do
-			 lastServerSave = lastServerSave + 24*60*60
-		 end
-		 print('[daily reward INFO] done falling back.')
-	 end
-	 
-     Game.setStorageValue(GlobalStorage.LastServerSave, lastServerSave)
 
 	-- zerar storages e permitir compra de boost na store
 	db.query('UPDATE `player_storage` SET `value` = 0 WHERE `player_storage`.`key` = 51052')
@@ -105,47 +88,6 @@ function onStartup()
 			end
 		until not result.next(resultId)
 		result.free(resultId)
-	end
-
-	-- register
-	local types = {
-		["axe"] = "hand",
-		["club"] = "hand",
-		["sword"] = "hand",
-		["rod"] = "hand",
-		["wand"] = "hand",
-		["bow"] = "hand",
-		["crossbow"] = "hand",
-		["especial"] = "hand",
-		["boots"] = "feet",
-		["helmet"] = "head",
-		["helmetmage"] = "head",
-		["spellbooks"] = "shield",
-	}
-	for tp, info in pairs(Imbuements_Weapons) do
-		for _, id in pairs(info) do
-			if not Game.itemidHasMoveevent(id) then
-				local reg = types[tp]
-				if not reg then
-					reg = tp
-				end
-				-- Equip function
-				local equip = MoveEvent()
-				equip.onEquip = defaultEquip
-				equip:type("equip")
-				equip:id(id)
-				equip:slot(reg)
-				equip:register()
-
-				-- DeEquip function
-				local deequip = MoveEvent()
-				deequip.onEquip = defaultDeEquip
-				deequip:type("deequip")
-				deequip:id(id)
-				deequip:slot(reg)
-				deequip:register()
-			end
-		end
 	end
 
 	-- Client XP Display Mode

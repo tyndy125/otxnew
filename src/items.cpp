@@ -1,4 +1,6 @@
 ﻿/**
+ * @file items.cpp
+ * 
  * The Forgotten Server - a free and open-source MMORPG server emulator
  * Copyright (C) 2019 Mark Samman <mark.samman@gmail.com>
  *
@@ -311,7 +313,11 @@ bool Items::loadFromXml()
 
 		pugi::xml_attribute fromIdAttribute = itemNode.attribute("fromid");
 		if (!fromIdAttribute) {
-			std::cout << "[Warning - Items::loadFromXml] No item id found" << std::endl;
+			if (idAttribute) {
+				std::cout << "[Warning - Items::loadFromXml] No item id (" << idAttribute.value() << ") found" << std::endl;
+			} else {
+				std::cout << "[Warning - Items::loadFromXml] No item id found" << std::endl;
+			}
 			continue;
 		}
 
@@ -424,6 +430,8 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 				it.type = ITEM_TYPE_BED;
 			} else if (tmpStrValue == "rune") {
 				it.type = ITEM_TYPE_RUNE;
+			} else if (tmpStrValue == "supply") {
+				it.type = ITEM_TYPE_SUPPLY;
 			} else {
 				std::cout << "[Warning - Items::parseItemNode] Unknown type: " << valueAttribute.as_string() << std::endl;
 			}
@@ -460,19 +468,19 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 		} else if (tmpStrValue == "floorchange") {
 			tmpStrValue = asLowerCaseString(valueAttribute.as_string());
 			if (tmpStrValue == "down") {
-				it.floorChange = TILESTATE_FLOORCHANGE_DOWN;
+				it.floorChange |= TILESTATE_FLOORCHANGE_DOWN;
 			} else if (tmpStrValue == "north") {
-				it.floorChange = TILESTATE_FLOORCHANGE_NORTH;
+				it.floorChange |= TILESTATE_FLOORCHANGE_NORTH;
 			} else if (tmpStrValue == "south") {
-				it.floorChange = TILESTATE_FLOORCHANGE_SOUTH;
+				it.floorChange |= TILESTATE_FLOORCHANGE_SOUTH;
 			} else if (tmpStrValue == "southalt") {
-				it.floorChange = TILESTATE_FLOORCHANGE_SOUTH_ALT;
+				it.floorChange |= TILESTATE_FLOORCHANGE_SOUTH_ALT;
 			} else if (tmpStrValue == "west") {
-				it.floorChange = TILESTATE_FLOORCHANGE_WEST;
+				it.floorChange |= TILESTATE_FLOORCHANGE_WEST;
 			} else if (tmpStrValue == "east") {
-				it.floorChange = TILESTATE_FLOORCHANGE_EAST;
+				it.floorChange |= TILESTATE_FLOORCHANGE_EAST;
 			} else if (tmpStrValue == "eastalt") {
-				it.floorChange = TILESTATE_FLOORCHANGE_EAST_ALT;
+				it.floorChange |= TILESTATE_FLOORCHANGE_EAST_ALT;
 			} else {
 				std::cout << "[Warning - Items::parseItemNode] Unknown floorChange: " << valueAttribute.as_string() << std::endl;
 			}

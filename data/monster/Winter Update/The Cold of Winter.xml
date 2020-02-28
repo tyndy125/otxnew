@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<monster name="The Cold Of Winter" nameDescription="a The Cold Of Winter" race="blood" experience="23" speed="190" manacost="300">
+<monster name="The Cold Of Winter" nameDescription="the cold of winter" race="blood" experience="23" speed="190">
 	<health now="40" max="40" />
 	<look type="53" corpse="5998" />
 	<targetchange interval="4000" chance="0" />
 	<flags>
-		<flag summonable="1" />
+		<flag summonable="0" />
 		<flag attackable="1" />
 		<flag hostile="1" />
-		<flag illusionable="1" />
-		<flag convinceable="1" />
+		<flag illusionable="0" />
+		<flag convinceable="0" />
 		<flag pushable="1" />
 		<flag canpushitems="0" />
 		<flag canpushcreatures="0" />
@@ -30,18 +30,4 @@
 		<element energyPercent="-10" />
 		<element deathPercent="-15" />
 	</elements>
-	<voices interval="5000" chance="10">
-		<voice sentence="Brrrr" />
-		<voice sentence="Broar!" />
-	</voices>
-	<loot>
-		<item name="gold coin" countmax="12" chance="50840" />
-		<item name="twigs" chance="8300" />
-		<item name="rapier" chance="15500" />
-		<item name="spear" chance="21500" />
-		<item id="2512" chance="15850" /><!-- wooden shield -->
-		<item name="coat" chance="1200" />
-		<item id="2667" chance="18000" /><!-- fish -->
-		<item name="frosty ear of a troll" chance="2000" />
-	</loot>
 </monster>

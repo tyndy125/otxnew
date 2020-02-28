@@ -15,28 +15,27 @@
 		<flag targetdistance="1" />
 		<flag staticattack="90" />
 		<flag runonhealth="15" />
-			<flag canwalkonfire="1" />
-			<flag canwalkonenergy="1" />
-			<flag canwalkonpoison="1" />
 	</flags>
 	<attacks>
+	<attack name="melee" interval="2000" min="0" max="-250" />
+	    <attack name="drunk" interval="2000" chance="8" target="1" duration="5000">
+			<attribute key="shootEffect" value="eartharrow" />
+			<attribute key="areaEffect" value="stun" />
+		</attack>
+		<attack name="speed" interval="2000" chance="7" range="7" speedchange="-120" duration="3000">
+			<attribute key="shootEffect" value="death" />
+			<attribute key="areaEffect" value="redshimmer" />
+		</attack>
 	</attacks>
+	<defenses armor="10" defense="10" />
+	    <defense name="healing" interval="2000" chance="15" min="160" max="235">
+		    <attribute key="areaEffect" value="blueshimmer" />
+	    </defense>
 	<elements>
-		<element physicalPercent="100" />
-		<element holyPercent="100" />
-		<element deathPercent="100" />
-		<element firePercent="100" />
-		<element energyPercent="100" />
-		<element icePercent="100" />
-		<element earthPercent="100" />
-		<element drownPercent="100" />
-		<element lifedrainPercent="100" />
-
+		<element energyPercent="20" />
+		<element icePercent="20" />
+		<element holyPercent="-10" />
 	</elements>
-	<immunities>
-		<immunity invisible="1" />
-		<immunity paralyze="1" />
-	</immunities>
-	<loot>
-</loot>
+	<voices interval="2000" chance="7">
+	</voices>
 </monster>
