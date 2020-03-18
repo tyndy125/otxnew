@@ -2212,6 +2212,11 @@ void Game::playerUseWithCreature(uint32_t playerId, const Position& fromPos, uin
 	if (!Position::areInRange<7, 5, 0>(creature->getPosition(), player->getPosition())) {
 		return;
 	}
+  
+  bool isHotkey = (pos.x == 0xFFFF && pos.y == 0 && pos.z == 0);
+	if (isHotkey && !g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
+		return;
+	}
 
 	Thing* thing = internalGetThing(player, fromPos, fromStackPos, spriteId, STACKPOS_USEITEM);
 	if (!thing) {
@@ -2281,7 +2286,7 @@ void Game::playerUseWithCreature(uint32_t playerId, const Position& fromPos, uin
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
 
-	g_actions->useItemEx(player, fromPos, creature->getPosition(), creature->getParent()->getThingIndex(creature), item, creature);
+	g_actions->useItemEx(player, fromPos, creature->getPosition(), creature->getParent()->getThingIndex(creature), item, isHotkey, creature);
 }
 
 void Game::playerCloseContainer(uint32_t playerId, uint8_t cid)
