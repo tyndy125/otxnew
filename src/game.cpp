@@ -2196,7 +2196,78 @@ void Game::playerUseItem(uint32_t playerId, const Position& pos, uint8_t stackPo
 
 	g_actions->useItem(player, pos, index, item, isHotkey);
 }
+bool Game::playerUseBattleWindow(uint32_t playerId, const Position& pos, int16_t stackpos,
+	uint32_t creatureId, uint16_t spriteId)
+{
+	Player* player = getPlayerByID(playerId);
+	if(!player || player->isRemoved())
+		return false;
 
+	Creature* creature = getCreatureByID(creatureId);
+	if(!creature)
+		return false;
+
+	if(!Position::areInRange<7,5,0>(creature->getPosition(), player->getPosition()))
+		return false;
+
+	Thing* thing = internalGetThing(player, pos, stackpos, spriteId, STACKPOS_USE);
+	if(!thing)
+	{
+		player->sendCancelMessage(RET_NOTPOSSIBLE);
+		return false;
+	}
+
+	Item* item = thing->getItem();
+	if(!item || item->getClientID() != spriteId)
+	{
+		player->sendCancelMessage(RET_CANNOTUSETHISOBJECT);
+		return false;
+	}
+
+	ReturnValue ret = g_actions->canUse(player, pos);
+	if(ret != RET_NOERROR)
+	{
+		if(ret == RET_TOOFARAWAY)
+		{
+			if(player->getNoMove())
+			{
+				player->sendCancelMessage(RET_NOTPOSSIBLE);
+				return false;
+			}
+
+			std::list<Direction> listDir;
+			if(getPathToEx(player, item->getPosition(), listDir, 0, 1, true, true))
+			{
+				Dispatcher::getInstance().addTask(createTask(boost::bind(&Game::playerAutoWalk,
+					this, player->getID(), listDir)));
+
+				SchedulerTask* task = createSchedulerTask(std::max((int32_t)SCHEDULER_MINTICKS, player->getStepDuration()),
+					boost::bind(&Game::playerUseBattleWindow, this, playerId, pos, stackpos, creatureId, spriteId));
+
+				player->setNextWalkActionTask(task);
+				return true;
+			}
+
+			ret = RET_THEREISNOWAY;
+		}
+
+		player->sendCancelMessage(ret);
+		return false;
+	}
+
+	if(!player->canDoAction())
+	{
+		SchedulerTask* task = createSchedulerTask(player->getNextActionTime(),
+			boost::bind(&Game::playerUseBattleWindow, this, playerId, pos, stackpos, creatureId, spriteId));
+		player->setNextActionTask(task);
+		return false;
+	}
+
+	player->setIdleTime(0);
+	player->setNextActionTask(NULL);
+	return g_actions->useItemEx(player, pos, creature->getPosition(),
+		creature->getParent()->__getIndexOfThing(creature), item, creatureId);
+}
 void Game::playerUseWithCreature(uint32_t playerId, const Position& fromPos, uint8_t fromStackPos, uint32_t creatureId, uint16_t spriteId)
 {
 	Player* player = getPlayerByID(playerId);
