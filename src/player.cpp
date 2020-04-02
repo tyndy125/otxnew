@@ -3535,6 +3535,10 @@ void Player::onAddCombatCondition(ConditionType_t type)
 		case CONDITION_BLEEDING:
 			sendTextMessage(MESSAGE_STATUS_DEFAULT, "You are bleeding.");
 			break;
+      
+    case CONDITION_STUN:
+    sendTextMessage(MESSAGE_STATUS_DEFAULT, "You have been stunned.");
+    break;
 
 		default:
 			break;
