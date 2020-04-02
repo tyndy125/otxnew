@@ -198,7 +198,7 @@ Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, in
 		case CONDITION_MANASHIELD:
 			return new ConditionGeneric(id, type, ticks, buff, subId);
     case CONDITION_STUN:
-    return new ConditionGeneric(_id, _type, _ticks, _buff, _subId);
+    return new ConditionGeneric(id, type, ticks, buff, subId);
 
 		default:
 			return nullptr;
