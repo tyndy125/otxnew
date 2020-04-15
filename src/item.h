@@ -668,6 +668,28 @@ class Item : virtual public Thing
 		const ItemAttributes::CustomAttribute* getCustomAttribute(const std::string& key) {
 			return getAttributes()->getCustomAttribute(key);
 		}
+    
+    const ItemAttributes::CustomAttribute* getCustomAttribute(const std::string& key) const {
+			if (!attributes) {
+				return nullptr;
+			}
+
+			if (!attributes->hasAttribute(ITEM_ATTRIBUTE_CUSTOM)) {
+				return nullptr;
+			}
+
+			ItemAttributes::CustomAttributeMap* customAttrMap = attributes->getAttr(ITEM_ATTRIBUTE_CUSTOM).value.custom;
+			if (!customAttrMap) {
+				return nullptr;
+			}
+
+			auto it = customAttrMap->find(asLowerCaseString(key));
+			if (it != customAttrMap->end()) {
+				return &(it->second);
+			}
+
+			return nullptr;
+		}
 
 		bool removeCustomAttribute(int64_t key) {
 			return getAttributes()->removeCustomAttribute(key);
@@ -837,6 +859,10 @@ class Item : virtual public Thing
 
 		// Returns the player that is holding this item in his inventory
 		Player* getHoldingPlayer() const;
+    
+    QuickLootCategory_t getLootCategory() const {
+			return items[id].quickLootCategory;
+		}
 
 		WeaponType_t getWeaponType() const {
 			return items[id].weaponType;
