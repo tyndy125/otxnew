@@ -610,8 +610,34 @@ class Item : virtual public Thing
 		void setIsLootTrackeable(bool value) {
 			isLootTrackeable = value;
 		}
+    
 		bool getIsLootTrackeable() {
 			return isLootTrackeable;
+		}
+    
+    
+    /////quick loot
+    uint32_t getQuickLootFlags() const
+		{
+			if (!attributes) {
+				return 0;
+			}
+
+			if (!attributes->hasAttribute(ITEM_ATTRIBUTE_CUSTOM)) {
+				return 0;
+			}
+
+			uint32_t flags = 0;
+			for (uint8_t i = LOOT_START; i < LOOT_END; i++)
+			{
+				const ItemAttributes::CustomAttribute* attr = getCustomAttribute("quickLootCategory" + std::to_string(i));
+				if (attr != nullptr) {
+					flags |= (1 << i);
+					continue;
+				}
+			}
+
+			return flags;
 		}
 
 		void removeAttribute(itemAttrTypes type) {
