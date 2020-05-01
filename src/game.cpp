@@ -4264,6 +4264,9 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		if (healthChange == 0) {
 			return true;
 		}
+    
+    TextMessage message;
+		message.position = targetPos;
 
 		SpectatorHashSet spectators;
 		map.getSpectators(spectators, targetPos, true, true);
