@@ -84,8 +84,7 @@ class Events
 
 		bool load();
   
-  // Monster
-		bool eventMonsterOnSpawn(Monster* monster, const Position& position, bool startup, bool artificial);
+  
 
 		// Creature
 		bool eventCreatureOnChangeOutfit(Creature* creature, const Outfit_t& outfit);
@@ -127,7 +126,7 @@ class Events
     void eventPlayerOnInventoryUpdate(Player* player, Item* item, slots_t slot, bool equip);
 
 		// Monster
-		void eventMonsterOnSpawn(Monster* monster, const Position& position);
+		bool eventMonsterOnSpawn(Monster* monster, const Position& position, bool startup, bool artificial);
 		void eventMonsterOnDropLoot(Monster* monster, Container* corpse);
 
 	private:
